@@ -1,0 +1,103 @@
+---
+# This configures the kubernetes service accounts for
+# use with RBAC.
+####
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: k8slb-system
+  name: watcher
+  labels:
+    app: k8slb
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: k8slb-system
+  name: actor
+  labels:
+    app: k8slb
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8slb-system:watcher
+  labels:
+    app: k8slb
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: [""]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services/status"]
+  verbs: ["update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: k8slb-system
+  name: config-watch
+  labels:
+    app: k8slb
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "update", "create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8slb-system:watcher
+  labels:
+    app: k8slb
+subjects:
+- kind: ServiceAccount
+  name: watcher
+  namespace: k8slb-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8slb-system:watcher
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8slb-system:actor
+  labels:
+    app: k8slb
+subjects:
+- kind: ServiceAccount
+  name: actor
+  namespace: k8slb-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8slb-system:actor
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: k8slb-system
+  name: config-watch
+  labels:
+    app: k8slb
+subjects:
+- kind: ServiceAccount
+  name: watcher
+- kind: ServiceAccount
+  name: actor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: config-watch
+
+

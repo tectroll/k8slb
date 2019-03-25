@@ -1,0 +1,60 @@
+---
+# Actor manifest, actor runs on each load balancer.
+# It watches for changes in the database, configures
+# the IPs, and listens for external connections.
+####
+apiVersion: apps/v1beta2
+kind: DaemonSet
+metadata:
+  labels:
+    app: k8slb
+    component: actor
+  name: actor
+  namespace: k8slb-system
+spec:
+  selector:
+    matchLabels:
+      app: k8slb
+      component: actor
+  template:
+    metadata:
+      labels:
+        app: k8slb
+        component: actor
+    spec:
+      hostNetwork: true
+      containers:
+      - image: docker.cs.vt.edu/carnold/library/actor
+        imagePullPolicy: Always
+        name: watcher
+        env:
+        - name: K8SLB_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: LOG_LEVEL
+          value: "3"
+        volumeMounts:
+        - name: certs
+          mountPath: /etc/certs
+          readOnly: true
+        - name: dev
+          mountPath: /dev
+        stdin: true
+        securityContext:
+          privileged: true
+      volumes:
+      - name: certs
+        hostPath:
+          path: /etc/certs
+      - name: dev
+        hostPath:
+          path: /dev
+      restartPolicy: Always
+      serviceAccount: actor
+      serviceAccountName: actor
+      terminationGracePeriodSeconds: 0
+      nodeSelector:
+        "type": "loadBalancer"
+
+
