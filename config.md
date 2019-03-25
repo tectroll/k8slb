@@ -42,13 +42,13 @@ RP virtual router id.
 #### Annotations
 These are placeholder annotations for controlling SSL termination.  Note, these are not implemented yet!
 * loadbalancer/mode
-** Leave blank for auto detection
-** Set to http to force layer 7 http handling in proxy
-** Set to false to force layer 4 passthrough
+   * Leave blank for auto detection
+   * Set to http to force layer 7 http handling in proxy
+   * Set to false to force layer 4 passthrough
 * loadbalancer/ssl
-** Leave blank for auto detection
-** Set to true to force SSL termination
-** Set to false to force no SSL termination
+   * Leave blank for auto detection
+   * Set to true to force SSL termination
+   * Set to false to force no SSL termination
 * loadbalancer/sslredirect
-** Set to false to disable automatic port 80 redirect for SSL termination
+   * Set to false to disable automatic port 80 redirect for SSL termination
 
