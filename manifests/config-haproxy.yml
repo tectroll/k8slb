@@ -1,0 +1,56 @@
+---
+# Example configuration, update with your own information
+# Note, the configs are in JSON format, not YAML
+####
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: k8slb-system
+  name: global
+data:
+  config: |
+    {
+      "pools": {
+          "default": {
+            "network": "192.168.10.0/24",
+            "range": "192.168.10.240-192.168.10.249"
+          }
+      },
+      "keepalived": {
+        "email": "",
+        "emailFrom": "",
+        "emailServer": "",
+        "emailServerTimeout": "30"
+      },
+      "haproxy": {
+        "defaults": [
+          "log global",
+          "retries 3",
+          "balance leastconn",
+          "timeout connect 30ms",
+          "timeout check 1000ms",
+          "timeout client 30000ms",
+          "timeout server 30000ms"
+        ],
+        "global": [
+          "chroot /var/lib/haproxy",
+          "pidfile /var/run/haproxy.pid",
+          "maxconn 4096",
+          "user haproxy",
+          "group haproxy",
+          "daemon",
+          "ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS",
+          "ssl-default-bind-options no-sslv3 no-tls-tickets",
+          "ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS",
+          "ssl-default-server-options no-sslv3 no-tls-tickets",
+          "tune.ssl.default-dh-param 2048"
+        ],
+        "tcpfront": [],
+        "httpfront": [
+          "option forwardfor", 
+          "http-request set-header X-Forwarded-Proto https if { ssl_fc }"
+        ],
+        "tcpback": [],
+        "httpback": []
+      }
+    }

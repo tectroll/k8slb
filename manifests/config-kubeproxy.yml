@@ -1,0 +1,25 @@
+---
+# Example configuration, update with your own information
+# Note, the configs are in JSON format, not YAML
+####
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: k8slb-system
+  name: global
+data:
+  config: |
+    {
+      "pools": {
+          "default": {
+            "network": "192.168.10.0/24",
+            "range": "192.168.10.240-192.168.10.249"
+          }
+      },
+      "keepalived": {
+        "email": "",
+        "emailFrom": "",
+        "emailServer": "",
+        "emailServerTimeout": "30"
+      }
+    }

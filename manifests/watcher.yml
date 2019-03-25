@@ -1,0 +1,48 @@
+---
+# Configures the watcher deployment.  A single instance of this
+# runs.  It watches kubernetes for changes in configuration and
+# updates the database needed by the actor.
+####
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  labels:
+    app: k8slb
+    component: watcher
+  name: watcher
+  namespace: k8slb-system
+spec:
+  selector:
+    matchLabels:
+      app: k8slb
+      component: watcher
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: k8slb
+        component: watcher
+    spec:
+      containers:
+      - image: docker.cs.vt.edu/carnold/library/watcher
+        imagePullPolicy: Always
+        name: watcher
+        env:
+        - name: K8SLB_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: LOG_LEVEL
+          value: "3"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {}
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+        stdin: true
+      restartPolicy: Always
+      serviceAccount: watcher
+      serviceAccountName: watcher
+      terminationGracePeriodSeconds: 0
+

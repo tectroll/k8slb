@@ -1,0 +1,9 @@
+# This will wipe the 'working' database and force the system to rebuild
+####
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: k8slb-system
+  name: working
+data:
+  config: ''
