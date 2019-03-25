@@ -28,11 +28,11 @@ k8slb system can use three different proxy back-ends to host the: haproxy, nginx
 
 Download the k8slb manifest 
 
-HAProxy - [k8slb-haproxy.yml](../manifests/k8slb-haproxy.yml)
+HAProxy - [k8slb-haproxy.yml](manifests/k8slb-haproxy.yml)
 
-Nginx - [k8slb-nginx.yml](../manifests/k8slb-nginx.yml)
+Nginx - [k8slb-nginx.yml](manifests/k8slb-nginx.yml)
 
-Kube-proxy - [k8slb-kubeproxy.yml](../manifests/k8slb-kubeproxy.yml)
+Kube-proxy - [k8slb-kubeproxy.yml](manifests/k8slb-kubeproxy.yml)
 
 Edit the file to match your environment.  Specifically, the IP pool(s) and email notifications.
 
