@@ -25,7 +25,7 @@ my %actorConfig = (
 
   hpCurrent             => "/etc/haproxy/haproxy.cfg",
   hpCmd                 => "/usr/sbin/haproxy",
-  hpOptions             => $ENV{HP_OPTIONS} || "-f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -st \$(cat /run/haproxy.pid)",
+  hpOptions             => $ENV{HP_OPTIONS} || "-f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -sf \$(cat /run/haproxy.pid)",
   hpWait                => $ENV{HP_WAIT} || 1,
   hpPID                 => "/run/haproxy.pid",
 

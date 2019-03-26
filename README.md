@@ -1,4 +1,4 @@
-## Layer 4 Load Balancer for Kubernetes Cluster
+## Layer 4/7 Hybrid Load Balancer for Kubernetes Cluster
 This project aims to implement a load balancer for kubernetes, specifically for the Rancher v2 UI.  It will be based on Keepalived and HAProxy with custom written perl code to glue the pieces (K8s, Keepalived, HAProxy) together.
 
 ### Requirements

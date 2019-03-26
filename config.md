@@ -24,7 +24,7 @@ You can change the actor's behavior by setting the following environment variabl
 * LOG_LEVEL: (Default: 3) 0 - no logging, 1 - ERROR, 2 - WARNING, 3 - INFO, 4 - DEBUG
 * KA_OPTIONS: (Default: -P -D -l) Sets keepalived command options
 * KA_WAIT: (Default: 10) Number of seconds to wait after starting keepalived before checking health
-* HP_OPTIONS: (Default: -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -st $(cat /run/haproxy.pid)) Sets HAProxy command options
+* HP_OPTIONS: (Default: -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -sf $(cat /run/haproxy.pid)) Sets HAProxy command options.  Change -sf to -st to reduce resource usage, but this terminates connections on configuration changes.
 * HP_WAIT: (Default: 1) Number of seconds to wait after starting HAProxy before checking health
 * NX_OPTIONS: (Default: -c /etc/nginx/nginx.conf) Sets nginx command options
 * NX_WAIT: (Default: 1) Number of seconds to wait after starting nginx before checking health
