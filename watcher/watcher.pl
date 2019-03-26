@@ -26,6 +26,7 @@ if (! $watcherConfig{wipeDB})
 {
   dbFromJSON($db, readConfig('working'));
 }
+
 info("Waiting for changes...");
 while (1)
 {
@@ -329,12 +330,29 @@ sub genNginx
     {
       foreach my $port ( @{$serviceHash->{$service}->{ports}} )
       {
-        if ( lc($port->{protocol}) eq 'tcp' )
+        if (!((lc(substr($port->{name},0,4)) eq 'http') || $port->{port} eq '80' || $port->{port} eq '443' || $port->{targetPort} eq '80' || $port->{targetPort} eq '443'))
         {
-#TODO handle TCP/UDP
-        } else {
-          error("Don't know how to handle protocol $port->{protocol} for $serviceHash->{$service}->{name}");
-        }
+          my $ngPort = $port->{port};
+          if ( lc($port->{protocol}) eq 'udp' )
+          {
+            $ngPort .= " udp";
+          }
+          my $id = "$serviceHash->{$service}->{nameSpace}\_$service";
+          ### Backend ###
+          $output .= "  upstream $id\_$port->{name}_backend {\n";
+          my $backendOpt = "max_fails=3 fail_timeout=5s";
+          foreach my $pod ( keys(%{$serviceHash->{$service}->{pods}}) )
+          {
+            $output .= "    server $serviceHash->{$service}->{pods}->{$pod}:$port->{targetPort} $backendOpt;\n";
+          }
+          $output .= "  }\n";
+
+          ### Frontend ###
+          $output .= "  server {\n";
+          $output .= "    listen $serviceHash->{$service}->{status}:$ngPort;\n";
+          $output .= "    proxy_pass $id\_$port->{name}_backend;\n";
+          $output .= "  }\n\n";
+        }        
       }
     }
   }
