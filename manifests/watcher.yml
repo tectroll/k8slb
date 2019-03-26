@@ -24,7 +24,7 @@ spec:
         component: watcher
     spec:
       containers:
-      - image: docker.cs.vt.edu/carnold/library/watcher
+      - image: tectroll/k8slb-watcher
         imagePullPolicy: Always
         name: watcher
         env:
