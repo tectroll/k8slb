@@ -33,7 +33,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: PROXY
-	  value: "nginx"
+          value: "nginx"
         - name: LOG_LEVEL
           value: "3"
         securityContext:
