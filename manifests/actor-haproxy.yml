@@ -24,7 +24,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: docker.cs.vt.edu/carnold/library/actor
+      - image: tectroll/k8slb-actor
         imagePullPolicy: Always
         name: watcher
         env:

@@ -12,18 +12,18 @@ if [ $? -ne 0 ]; then
   exit
 fi
 
-docker build -t docker.cs.vt.edu/carnold/library/watcher -f watcher/Dockerfile .
+docker build -t tectroll/k8slb-watcher:latest -f watcher/Dockerfile .
 if [ $? -ne 0 ]; then
   echo "ERROR: watcher docker image failed"
   exit
 fi
-docker push docker.cs.vt.edu/carnold/library/watcher
+docker push tectroll/k8slb-watcher:latest
 
-docker build -t docker.cs.vt.edu/carnold/library/actor -f actor/Dockerfile .
+docker build -t tectroll/k8slb-actor:latest -f actor/Dockerfile .
 if [ $? -ne 0 ]; then
   echo "ERROR: actor docker image failed"
   exit
 fi
-docker push docker.cs.vt.edu/carnold/library/actor
+docker push tectroll/k8slb-actor:latest
 
 echo "COMPLETE"
