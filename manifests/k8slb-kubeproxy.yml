@@ -167,6 +167,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: PROXY
+	  value: "kubeproxy"
         - name: LOG_LEVEL
           value: "3"
         securityContext:
