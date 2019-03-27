@@ -177,9 +177,13 @@ sub genHAProxy
           # Backend
           my $mode = 'tcp';
           # Try to determine mode automatically
-          if ($port->{port} eq '80' || $port->{port} eq '443' || $port->{targetPort} eq '80' || $port->{targetPort} eq '443')
+          if ((lc($serviceHash->{$service}->{options}->{mode} eq 'http')) || $port->{port} eq '80' || $port->{port} eq '443' || $port->{targetPort} eq '80' || $port->{targetPort} eq '443')
           {
             $mode = 'http';
+          }
+          if (lc($serviceHash->{$service}->{options}->{mode}) eq 'false')
+          {
+            $mode = 'tcp';
           }
           my $id = "$serviceHash->{$service}->{nameSpace}\_$service";
           $output .= "\nbackend  $id\_$port->{name}_backend\n";
@@ -197,9 +201,13 @@ sub genHAProxy
             }
           }
           my $backendOpt = 'check';
-          if ($port->{targetPort} eq '443' || lc(substr($port->{name},0,5)) eq 'https' )
+          if ((lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'true') || $port->{targetPort} eq '443' || lc(substr($port->{name},0,5)) eq 'https' )
           {
             $backendOpt .= " ssl verify none";
+          }
+          if (lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'false')
+          {
+            $backendOpt = 'check';
           }
           foreach my $pod ( keys(%{$serviceHash->{$service}->{pods}}) )
           {
@@ -208,12 +216,20 @@ sub genHAProxy
 
           # Frontend
           my $ssl = '';
-          if ($port->{port} eq '443')
+          if ((lc($serviceHash->{$service}->{options}->{ssl}) eq 'true') || $port->{port} eq '443')
           {
             $ssl .= " ssl crt /etc/certs/$serviceHash->{$service}->{pool}.pem";
           }
+          if (lc($serviceHash->{$service}->{options}->{ssl} eq 'false'))
+          {
+            $ssl = '';
+          }
           $output .= "\nfrontend  $id\_$port->{name}\n";
           $output .= "  mode  $mode\n";
+          if (lc($serviceHash->{$service}->{options}->{sslredirect}) eq 'true')
+          {
+            $output .= '  redirect scheme https code 301 if !{ ssl_fc }' . "\n";
+          }
           if ($mode eq 'http')
           {
             foreach my $option ( @{$hash->{globals}->{haproxy}->{httpfront}} )

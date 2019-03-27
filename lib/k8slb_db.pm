@@ -337,6 +337,13 @@ sub servicesFromJSON
         $found = 1;
 
         my $serv = serviceConvert($s);
+
+        if ( ! genericCompare($db->{services}->{$service}->{options}, $serv->{options}) )
+        {
+          $db->{services}->{$service}->{options} = $serv->{options};
+          info("Service $service options changed");
+          $changed = 1;
+        }
         if ($db->{services}->{$service}->{selector} ne $serv->{selector})
         {
           info("Service $service selector changed");
@@ -501,6 +508,15 @@ sub serviceConvert
   } else {
     $hash{pool} = 'default';
   }
+  foreach my $anno ( keys(%{$service->{metadata}->{annotations}}) )
+  {
+    if ( lc(substr($anno,0,12)) eq 'loadbalancer')
+    {
+      my ($lb,$option) = split('/', $anno);
+      $option = lc($option);
+      $hash{options}->{$option} = $service->{metadata}->{annotations}->{$anno};
+    }
+  }
   if ($service->{spec}->{loadBalancerIP})
   {
     $hash{requestIP} = $service->{spec}->{loadBalancerIP};
@@ -509,7 +525,7 @@ sub serviceConvert
   if ($service->{spec}->{selector})
   {
     my @selector;
-    foreach my $sel ( keys(%{$service->{spec}->{selector}}) )
+    foreach my $sel ( sort(keys(%{$service->{spec}->{selector}})) )
     {
       $selector[$#selector + 1] = "$sel=$service->{spec}->{selector}->{$sel}";
     }
