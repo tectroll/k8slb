@@ -148,12 +148,9 @@ sub genHAProxy
 {
   my ($hash) = @_;
 
-  my $globalsHash = globalsToHash($db);
-  my $lbHash = loadBalancersToHash($db);
-  my $serviceHash = servicesToHash($db);
-
-#debug Dumper $serviceHash;
-#return('');
+  my $globalsHash = globalsToHash($hash);
+  my $lbHash = loadBalancersToHash($hash);
+  my $serviceHash = servicesToHash($hash);
 
   my $output = "global\n";
   foreach my $o ( @{$globalsHash->{haproxy}->{global}} )
@@ -165,11 +162,27 @@ sub genHAProxy
   {
     $output .= "  $o\n";
   }
-
   foreach my $service ( keys(%{$serviceHash}) )
   {
     if ($serviceHash->{$service}->{status})
     {
+      my $doRedirect = 0;
+      foreach my $port ( @{$serviceHash->{$service}->{ports}} )
+      {
+        if ($port->{port} eq '443' || (lc($serviceHash->{$service}->{options}->{ssl}) eq 'true') )
+        {
+          if ( lc($serviceHash->{$service}->{options}->{sslredirect}) ne 'true' )
+          {
+            if (lc($serviceHash->{$service}->{options}->{sslredirect}) ne 'false')
+            {
+              debug("Automatically redirecting SSL for service $service");
+              $doRedirect = 1;
+            }
+          } else {
+            $doRedirect = 1;
+          }
+        }
+      }
       foreach my $port ( @{$serviceHash->{$service}->{ports}} )
       {
         if ( lc($port->{protocol}) eq 'tcp' )
@@ -190,12 +203,12 @@ sub genHAProxy
           $output .= "  mode  $mode\n";
           if ($mode eq 'http')
           {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{httpback}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{httpback}} )
             {
               $output .= "  $option\n";
             }
           } else {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{tcpback}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{tcpback}} )
             {
               $output .= "  $option\n";
             }
@@ -226,21 +239,21 @@ sub genHAProxy
           }
           $output .= "\nfrontend  $id\_$port->{name}\n";
           $output .= "  mode  $mode\n";
-          if (lc($serviceHash->{$service}->{options}->{sslredirect}) eq 'true')
-          {
-            $output .= '  redirect scheme https code 301 if !{ ssl_fc }' . "\n";
-          }
           if ($mode eq 'http')
           {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{httpfront}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{httpfront}} )
             {
               $output .= "  $option\n";
             }
           } else {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{tcpfront}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{tcpfront}} )
             {
               $output .= "  $option\n";
             }
+          }
+          if ($doRedirect)
+          {
+            $output .= '  redirect scheme https code 301 if !{ ssl_fc }' . "\n";
           }
           $output .= "  bind  $serviceHash->{$service}->{status}:$port->{port}$ssl\n";
           $output .= "  default_backend  $id\_$port->{name}_backend\n";
@@ -260,9 +273,9 @@ sub genNginx
 {
   my ($hash) = @_;
 
-  my $globalsHash = globalsToHash($db);
-  my $lbHash = loadBalancersToHash($db);
-  my $serviceHash = servicesToHash($db);
+  my $globalsHash = globalsToHash($hash);
+  my $lbHash = loadBalancersToHash($hash);
+  my $serviceHash = servicesToHash($hash);
 
   my $output = '';
   foreach my $o ( @{$globalsHash->{nginx}->{global}} )
