@@ -24,6 +24,8 @@ RKE deploys nginx-ingress controller on every node, listening on ports 80 and 44
       type: ingress
     restartPolicy: Always
 
+On each load balancer node, you will need to create `/etc/certs` directory and populate with SSL certs.  There is a cert file for each IP pool.  See the [SSL Termination](#SSL-termination) section below for more details.
+
 k8slb system can use three different proxy back-ends to host the: haproxy, nginx, already existing kube-proxy.  Haproxy is the default, it offers the best options with minimum configuration.  Nginx offers similar options with advanced configuration.  kube-proxy works with no additional configuration, but very few options such as IPv4 only, no load balancing, no service checks.
 
 Download the k8slb manifest 
@@ -197,6 +199,7 @@ Here is an example of simulating a dual stack application.  It creates two loadB
 By default, the system will automatically enable SSL termination to services if one or more of the following is true:
 * listens to port 443 publicly 
 * port name starts with "https"
+* annotation: loadbalancer/ssl=true 
 
 By default, each pool uses its own wildcard certificate for the SSL termination, located under /etc/certs
 * HAProxy: /etc/certs/\<poolname>.pem  Format is cert bundle supported by HAProxy http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-crt
