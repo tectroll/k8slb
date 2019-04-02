@@ -47,8 +47,12 @@ These are placeholder annotations for controlling SSL termination.  Note, these 
    * Set to false to force layer 4 passthrough
 * loadbalancer/ssl
    * Leave blank for auto detection
-   * Set to true to force SSL termination
-   * Set to false to force no SSL termination
+   * Set to true to force SSL termination on frontend
+   * Set to false to force no SSL termination on frontend
+* loadbalancer/sslbackend
+   * Leave blank for auto detection
+   * Set to true to force SSL negotiation to backend
+   * Set to false to force no SSL negotiation to backend
 * loadbalancer/sslredirect
    * Set to false to disable automatic port 80 redirect for SSL termination
 

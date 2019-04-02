@@ -329,14 +329,22 @@ sub servicesFromJSON
   # service removed/changed?
   foreach my $service ( keys(%{$db->{services}} ) )
   {
+    debug("Checking service $service");
     my $found = 0;
     foreach my $s ( @{$servicesHash->{items}} )
     {
       if ("$s->{metadata}->{namespace}_$s->{metadata}->{name}" eq $service)
       {
+        debug("  found, checking for changes");
         $found = 1;
-
         my $serv = serviceConvert($s);
+
+        if ( ! genericCompare($db->{services}->{$service}->{options}, $serv->{options}) )
+        {
+          $db->{services}->{$service}->{options} = $serv->{options};
+          info("Service $service options changed");
+          $changed = 1;
+        }
         if ($db->{services}->{$service}->{selector} ne $serv->{selector})
         {
           info("Service $service selector changed");
@@ -377,6 +385,7 @@ sub servicesFromJSON
     }
     if (! $found)
     {
+      debug("  $service not found");
       info("service $service removed");
       ipUnassign($db, $service, 1);
       delete $db->{services}->{$service};
@@ -399,9 +408,10 @@ sub servicesFromJSON
       }
       if (! $found)
       {
-        info("New service $service->{metadata}->{name} found");
-        $db->{services}->{"$service->{metadata}->{namespace}_$service->{metadata}->{name}"} = serviceConvert($service);
-        ipAssign($db,"$service->{metadata}->{namespace}_$service->{metadata}->{name}");
+        my $name = "$service->{metadata}->{namespace}_$service->{metadata}->{name}";
+        info("New service $name found");
+        $db->{services}->{$name} = serviceConvert($service);
+        ipAssign($db,$name);
         $changed = 1;
       }
     }
@@ -501,6 +511,16 @@ sub serviceConvert
   } else {
     $hash{pool} = 'default';
   }
+  $hash{options} = {};
+  foreach my $anno ( keys(%{$service->{metadata}->{annotations}}) )
+  {
+    if ( lc(substr($anno,0,12)) eq 'loadbalancer')
+    {
+      my ($lb,$option) = split('/', $anno);
+      $option = lc($option);
+      $hash{options}->{$option} = $service->{metadata}->{annotations}->{$anno};
+    }
+  }
   if ($service->{spec}->{loadBalancerIP})
   {
     $hash{requestIP} = $service->{spec}->{loadBalancerIP};
@@ -509,7 +529,7 @@ sub serviceConvert
   if ($service->{spec}->{selector})
   {
     my @selector;
-    foreach my $sel ( keys(%{$service->{spec}->{selector}}) )
+    foreach my $sel ( sort(keys(%{$service->{spec}->{selector}})) )
     {
       $selector[$#selector + 1] = "$sel=$service->{spec}->{selector}->{$sel}";
     }

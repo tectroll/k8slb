@@ -26,6 +26,7 @@ if (! $watcherConfig{wipeDB})
 {
   dbFromJSON($db, readConfig('working'));
 }
+
 info("Waiting for changes...");
 while (1)
 {
@@ -147,12 +148,9 @@ sub genHAProxy
 {
   my ($hash) = @_;
 
-  my $globalsHash = globalsToHash($db);
-  my $lbHash = loadBalancersToHash($db);
-  my $serviceHash = servicesToHash($db);
-
-#debug Dumper $serviceHash;
-#return('');
+  my $globalsHash = globalsToHash($hash);
+  my $lbHash = loadBalancersToHash($hash);
+  my $serviceHash = servicesToHash($hash);
 
   my $output = "global\n";
   foreach my $o ( @{$globalsHash->{haproxy}->{global}} )
@@ -164,11 +162,27 @@ sub genHAProxy
   {
     $output .= "  $o\n";
   }
-
   foreach my $service ( keys(%{$serviceHash}) )
   {
     if ($serviceHash->{$service}->{status})
     {
+      my $doRedirect = 0;
+      foreach my $port ( @{$serviceHash->{$service}->{ports}} )
+      {
+        if ($port->{port} eq '443' || (lc($serviceHash->{$service}->{options}->{ssl}) eq 'true') )
+        {
+          if ( lc($serviceHash->{$service}->{options}->{sslredirect}) ne 'true' )
+          {
+            if (lc($serviceHash->{$service}->{options}->{sslredirect}) ne 'false')
+            {
+              debug("Automatically redirecting SSL for service $service");
+              $doRedirect = 1;
+            }
+          } else {
+            $doRedirect = 1;
+          }
+        }
+      }
       foreach my $port ( @{$serviceHash->{$service}->{ports}} )
       {
         if ( lc($port->{protocol}) eq 'tcp' )
@@ -176,29 +190,37 @@ sub genHAProxy
           # Backend
           my $mode = 'tcp';
           # Try to determine mode automatically
-          if ($port->{port} eq '80' || $port->{port} eq '443' || $port->{targetPort} eq '80' || $port->{targetPort} eq '443')
+          if ((lc($serviceHash->{$service}->{options}->{mode} eq 'http')) || $port->{port} eq '80' || $port->{port} eq '443' || $port->{targetPort} eq '80' || $port->{targetPort} eq '443')
           {
             $mode = 'http';
+          }
+          if (lc($serviceHash->{$service}->{options}->{mode}) eq 'false')
+          {
+            $mode = 'tcp';
           }
           my $id = "$serviceHash->{$service}->{nameSpace}\_$service";
           $output .= "\nbackend  $id\_$port->{name}_backend\n";
           $output .= "  mode  $mode\n";
           if ($mode eq 'http')
           {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{httpback}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{httpback}} )
             {
               $output .= "  $option\n";
             }
           } else {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{tcpback}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{tcpback}} )
             {
               $output .= "  $option\n";
             }
           }
           my $backendOpt = 'check';
-          if ($port->{targetPort} eq '443' || lc(substr($port->{name},0,5)) eq 'https' )
+          if ((lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'true') || $port->{targetPort} eq '443' || lc(substr($port->{name},0,5)) eq 'https' )
           {
             $backendOpt .= " ssl verify none";
+          }
+          if (lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'false')
+          {
+            $backendOpt = 'check';
           }
           foreach my $pod ( keys(%{$serviceHash->{$service}->{pods}}) )
           {
@@ -207,23 +229,31 @@ sub genHAProxy
 
           # Frontend
           my $ssl = '';
-          if ($port->{port} eq '443')
+          if ((lc($serviceHash->{$service}->{options}->{ssl}) eq 'true') || $port->{port} eq '443')
           {
             $ssl .= " ssl crt /etc/certs/$serviceHash->{$service}->{pool}.pem";
+          }
+          if (lc($serviceHash->{$service}->{options}->{ssl} eq 'false'))
+          {
+            $ssl = '';
           }
           $output .= "\nfrontend  $id\_$port->{name}\n";
           $output .= "  mode  $mode\n";
           if ($mode eq 'http')
           {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{httpfront}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{httpfront}} )
             {
               $output .= "  $option\n";
             }
           } else {
-            foreach my $option ( @{$hash->{globals}->{haproxy}->{tcpfront}} )
+            foreach my $option ( @{$globalsHash->{haproxy}->{tcpfront}} )
             {
               $output .= "  $option\n";
             }
+          }
+          if ($doRedirect)
+          {
+            $output .= '  redirect scheme https code 301 if !{ ssl_fc }' . "\n";
           }
           $output .= "  bind  $serviceHash->{$service}->{status}:$port->{port}$ssl\n";
           $output .= "  default_backend  $id\_$port->{name}_backend\n";
@@ -243,9 +273,9 @@ sub genNginx
 {
   my ($hash) = @_;
 
-  my $globalsHash = globalsToHash($db);
-  my $lbHash = loadBalancersToHash($db);
-  my $serviceHash = servicesToHash($db);
+  my $globalsHash = globalsToHash($hash);
+  my $lbHash = loadBalancersToHash($hash);
+  my $serviceHash = servicesToHash($hash);
 
   my $output = '';
   foreach my $o ( @{$globalsHash->{nginx}->{global}} )
@@ -329,12 +359,29 @@ sub genNginx
     {
       foreach my $port ( @{$serviceHash->{$service}->{ports}} )
       {
-        if ( lc($port->{protocol}) eq 'tcp' )
+        if (!((lc(substr($port->{name},0,4)) eq 'http') || $port->{port} eq '80' || $port->{port} eq '443' || $port->{targetPort} eq '80' || $port->{targetPort} eq '443'))
         {
-#TODO handle TCP/UDP
-        } else {
-          error("Don't know how to handle protocol $port->{protocol} for $serviceHash->{$service}->{name}");
-        }
+          my $ngPort = $port->{port};
+          if ( lc($port->{protocol}) eq 'udp' )
+          {
+            $ngPort .= " udp";
+          }
+          my $id = "$serviceHash->{$service}->{nameSpace}\_$service";
+          ### Backend ###
+          $output .= "  upstream $id\_$port->{name}_backend {\n";
+          my $backendOpt = "max_fails=3 fail_timeout=5s";
+          foreach my $pod ( keys(%{$serviceHash->{$service}->{pods}}) )
+          {
+            $output .= "    server $serviceHash->{$service}->{pods}->{$pod}:$port->{targetPort} $backendOpt;\n";
+          }
+          $output .= "  }\n";
+
+          ### Frontend ###
+          $output .= "  server {\n";
+          $output .= "    listen $serviceHash->{$service}->{status}:$ngPort;\n";
+          $output .= "    proxy_pass $id\_$port->{name}_backend;\n";
+          $output .= "  }\n\n";
+        }        
       }
     }
   }

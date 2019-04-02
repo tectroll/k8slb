@@ -24,9 +24,9 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: tectroll/k8slb-actor
+      - image: tectroll/k8slb-actor:latest
         imagePullPolicy: Always
-        name: watcher
+        name: actor
         env:
         - name: K8SLB_NODE_NAME
           valueFrom:

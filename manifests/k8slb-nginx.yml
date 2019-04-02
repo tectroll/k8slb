@@ -195,32 +195,14 @@ metadata:
     app: k8slb
 rules:
 - apiGroups: [""]
-  resources: ["services"]
-  verbs: ["get", "list", "watch", "update"]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "update", "patch"]
 - apiGroups: [""]
-  resources: ["nodes"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["pods"]
+  resources: ["nodes", "pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["services/status"]
   verbs: ["update", "patch"]
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["create", "patch"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: k8slb-system:actor
-  labels:
-    app: k8slb
-rules:
-- apiGroups: [""]
-  resources: ["services", "endpoints", "nodes"]
-  verbs: ["get", "list", "watch"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -234,9 +216,6 @@ rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get", "list", "watch", "update", "create"]
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["create"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -315,14 +294,15 @@ spec:
         component: watcher
     spec:
       containers:
-      - image: docker.cs.vt.edu/carnold/library/watcher
-        imagePullPolicy: Always
+      - image: tectroll/k8slb-watcher:v0.3
         name: watcher
         env:
         - name: K8SLB_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: PROXY
+          value: "nginx"
         - name: LOG_LEVEL
           value: "3"
         securityContext:
@@ -363,7 +343,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: docker.cs.vt.edu/carnold/library/actor
+      - image: tectroll/k8slb-actor:v0.3
         imagePullPolicy: Always
         name: watcher
         env:
