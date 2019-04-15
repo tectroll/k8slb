@@ -214,6 +214,10 @@ sub genHAProxy
             }
           }
           my $backendOpt = 'check';
+          if (lc($serviceHash->{$service}->{options}->{nocheck}) eq 'true')
+          {
+            $backendOpt = '';
+          }
           if ((lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'true') || $port->{targetPort} eq '443' || lc(substr($port->{name},0,5)) eq 'https' )
           {
             $backendOpt .= " ssl verify none";

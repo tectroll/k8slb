@@ -37,10 +37,16 @@ RP virtual router id.
 * PROXY: (Default: haproxy)  Sets which proxy backend to use.  You will need to change this in the watcher manifest as well, and make sure the global configuration supports the backend.
 * PRIORITY#: (Default: ) Override keepalived priority for load balancer number #
 
+### Service Annotations
+These annotations change the way the k8slb system handles services
+* loadbalancer/nocheck
+  * Leave blank or false to do the default health check on backend servers
+  * Set to true to do no health check on backend (useful now to loadBalance ingress-nginx service until more advanced health checks are implemented)
+
 ### SSL Termination
 
 #### Annotations
-These are placeholder annotations for controlling SSL termination.  Note, these are not implemented yet!
+These annotations change the way the k8slb system handles SSL termination.
 * loadbalancer/mode
    * Leave blank for auto detection
    * Set to http to force layer 7 http handling in proxy

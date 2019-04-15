@@ -514,10 +514,12 @@ sub serviceConvert
   $hash{options} = {};
   foreach my $anno ( keys(%{$service->{metadata}->{annotations}}) )
   {
+info("$hash{name} $anno");
     if ( lc(substr($anno,0,12)) eq 'loadbalancer')
     {
       my ($lb,$option) = split('/', $anno);
       $option = lc($option);
+info("$hash{name} $option $service->{metadata}->{annotations}->{$anno}");
       $hash{options}->{$option} = $service->{metadata}->{annotations}->{$anno};
     }
   }
