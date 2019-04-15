@@ -194,14 +194,38 @@ Here is an example of simulating a dual stack application.  It creates two loadB
         app: myapp
       type: LoadBalancer
 
+Here is an example of giving your Ingress controller a floating IP and SSL termination.
+
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: ingress-lb
+      namespace: ingress-nginx
+      annotations:
+        loadbalancer/pool: public
+    spec:
+      loadBalancerIP: 1.2.3.4
+      ports:
+        - name: http
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        - name: https
+          port: 443
+          protocol: TCP
+          targetPort: 80
+      selector:
+        app: ingress-nginx
+      type: LoadBalancer
+
 
 ### SSL Termination
 By default, the system will automatically enable SSL termination to services if one or more of the following is true:
 * listens to port 443 publicly 
 * port name starts with "https"
-* annotation: loadbalancer/ssl=true 
+* annotation: loadbalancer/ssl="true" 
 
-By default, each pool uses its own wildcard certificate for the SSL termination, located under /etc/certs
+By default certs are located under /etc/certs on the loadbalancer nodes
 * HAProxy: /etc/certs/\<poolname>.pem  Format is cert bundle supported by HAProxy http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-crt
 * Nginx: /etc/certs/\<poolname>.pem & /etc/certs/\<poolname>.key
 * Kube-proxy: no support for SSL termination

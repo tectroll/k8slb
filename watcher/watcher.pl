@@ -235,7 +235,8 @@ sub genHAProxy
           my $ssl = '';
           if ((lc($serviceHash->{$service}->{options}->{ssl}) eq 'true') || $port->{port} eq '443')
           {
-            $ssl .= " ssl crt /etc/certs/$serviceHash->{$service}->{pool}.pem";
+#            $ssl .= " ssl crt $watcherConfig{certPath}/$serviceHash->{$service}->{pool}.pem";
+            $ssl .= " ssl crt $watcherConfig{certPath}/";
           }
           if (lc($serviceHash->{$service}->{options}->{ssl} eq 'false'))
           {
