@@ -292,11 +292,11 @@ sub patchService
     }
   }
   # Avoid possible conflict with kube-proxy
-  if ($nameSpace eq 'cattle-system')
-  {
-    debug("Skip patching cattle-system service");
-    return('');
-  }
+#  if ($nameSpace eq 'cattle-system')
+#  {
+#    debug("Skip patching cattle-system service");
+#    return('');
+#  }
   my $patch = [
    {
      op => 'replace',
