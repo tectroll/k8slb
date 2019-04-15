@@ -218,7 +218,7 @@ sub genHAProxy
           {
             $backendOpt = '';
           }
-          if ((lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'true') || $port->{targetPort} eq '443' || lc(substr($port->{name},0,5)) eq 'https' )
+          if ((lc($serviceHash->{$service}->{options}->{sslbackend}) eq 'true') || $port->{targetPort} eq '443')
           {
             $backendOpt .= " ssl verify none";
           }
