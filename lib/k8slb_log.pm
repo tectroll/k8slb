@@ -22,6 +22,7 @@ BEGIN {
 }
 
 use strict;
+use k8slb_api;
 
 use constant {
   NONE => 0,
@@ -33,7 +34,12 @@ use constant {
 
 %logConfig = (
   logLevel => INFO,
+  backoffTime => 5,  # number of seconds to backoff from error logging
+  backoffMaxTime => 3600,
 );
+
+my %errorHistory = ();
+my %warningHistory = ();
 
 sub logLevel
 {
@@ -52,28 +58,95 @@ sub debug
 
 sub info
 {
-  my ($msg) = @_;
+  my ($msg, $service) = @_;
   if ( $logConfig{logLevel} >= INFO )
   {
     doLog("INFO: $msg");
+    if (isConnected())
+    {
+      if ($service)
+      {
+        writeServiceEvent($service, "Normal", "INFO", $msg);
+      } else {
+        writePodEvent(getMyself(), "Normal", "INFO", $msg);
+      }
+    }
   }
 }
 
 sub warning
 {
-  my ($msg) = @_;
+  my ($msg, $service) = @_;
   if ( $logConfig{logLevel} >= WARNING )
   {
-    doLog("WARNING: $msg");
-  } 
+    my $waitTime = $logConfig{backoffTime} * $warningHistory{$msg}->{logCount};
+    if ( (time - $warningHistory{$msg}->{lastLog}) > ($logConfig{backoffMaxTime} * 2) )
+    {
+      $warningHistory{$msg}->{logCount} = 0;
+    }
+    if ($waitTime > $logConfig{backoffMaxTime})
+    {
+      $waitTime = $logConfig{backoffMaxTime};
+    }
+    if ( (time - $warningHistory{$msg}->{lastLog}) >= $waitTime )
+    {
+      $warningHistory{$msg}->{lastLog} = time;
+      $warningHistory{$msg}->{logCount} += 1;
+      if ($warningHistory{$msg}->{failCount} > 2)
+      {
+        $msg .= " (repeated $warningHistory{$msg}->{failCount} times)";
+      }
+      doLog("WARNING: $msg");
+      if (isConnected())
+      {
+        if ($service)
+        {
+          writeServiceEvent($service, "Warning", "WARNING", $msg);
+        } else {
+          writePodEvent(getMyself(), "Warning", "WARNING", $msg);
+        }
+      }
+    }
+    $warningHistory{$msg}->{failCount} += 1;
+    $warningHistory{$msg}->{lastFail} = time;
+  }
 }
 
 sub error
 {
-  my ($msg) = @_;
+  my ($msg, $service) = @_;
   if ( $logConfig{logLevel} >= ERROR )
   {
-    doLog("ERROR: $msg");
+    my $waitTime = $logConfig{backoffTime} * $errorHistory{$msg}->{logCount};
+    if ( (time - $errorHistory{$msg}->{lastLog}) > ($logConfig{backoffMaxTime} * 2) )
+    {
+      $errorHistory{$msg}->{logCount} = 0;
+    }
+    if ($waitTime > $logConfig{backoffMaxTime})
+    {
+      $waitTime = $logConfig{backoffMaxTime};
+    }
+    if ( (time - $errorHistory{$msg}->{lastLog}) >= $waitTime )
+    {
+      $errorHistory{$msg}->{lastLog} = time;
+      $errorHistory{$msg}->{logCount} += 1;
+      if ($errorHistory{$msg}->{failCount} > 2)
+      {
+        $msg .= " (repeated $errorHistory{$msg}->{failCount} times)";
+      }
+      doLog("ERROR: $msg");
+      if (isConnected())
+      {
+        if ($service)
+        {
+          writeServiceEvent($service, "Warning", "ERROR", $msg);
+        } else {
+          writePodEvent(getMyself(), "Warning", "ERROR", $msg);
+        } 
+      }
+    }
+    $errorHistory{$msg}->{failCount} += 1;
+    $errorHistory{$msg}->{lastFail} = time;
   }
 }
 

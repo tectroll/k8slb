@@ -10,11 +10,18 @@ BEGIN {
              	&readConfig
              	&readEpoch
                 &writeConfig
+                &readService
                 &readServices           
 		&readNodes
+		&readPod
 		&readPods
 		&patchService
+                &writeServiceEvent
+                &writePodEvent
 		&serviceEndpoint
+		&watcherSpec
+		&getMyself
+		&isConnected
     );
 }
 
@@ -27,6 +34,7 @@ use JSON;
 use k8slb_log;
 use k8slb_db;
 use Socket;
+use DateTime;
 
 # Configuration overrides
 %apiConfig = (
@@ -39,6 +47,9 @@ use Socket;
   'nameSpace' 	=> 'k8slb-system',
   'caCert'	=> '',
 );
+
+my $connected = 0;
+my $myself = undef;
 
 # Attempt to auto config api URL
 if (-e "/var/run/secrets/kubernetes.io/serviceaccount/token")
@@ -182,6 +193,35 @@ sub writeConfig
 } 
 
 # Returns json encoded service information
+sub readService
+{
+  my ($namespace, $service) = @_;
+  if (! $namespace || ! $service)
+  {
+    return('');
+  }
+
+  my $url = "$apiConfig{apiURL}/namespaces/$namespace/services/$service";
+
+  my $ua = apiConnect();
+  my $response;
+  if ($apiConfig{token})
+  {
+    $response = $ua->get("$url", Authorization => "Bearer $apiConfig{token}");
+  } else {
+    $response = $ua->get("$url");
+  }
+  if ($response->is_success)
+  {
+    return($response->decoded_content);
+  } else {
+    error("Error reading services: ".$response->status_line);
+    debug($response->decoded_content);
+  }
+  return('');
+}
+
+# Returns json encoded service information
 sub readServices
 {
   my $ua = apiConnect();
@@ -230,6 +270,35 @@ sub readNodes
     return($response->decoded_content);
   } else {
     error("Error reading services: ".$response->status_line);
+    debug($response->decoded_content);
+  }
+  return('');
+}
+
+# Returns json encoded pod information
+sub readPod
+{
+  my ($namespace, $pod) = @_;
+  if (! $namespace || ! $pod)
+  {
+    return('');
+  }
+
+  my $url = "$apiConfig{apiURL}/namespaces/$namespace/pods/$pod";
+
+  my $ua = apiConnect();
+  my $response;
+  if ($apiConfig{token})
+  {
+    $response = $ua->get("$url", Authorization => "Bearer $apiConfig{token}");
+  } else {
+    $response = $ua->get("$url");
+  }
+  if ($response->is_success)
+  {
+    return($response->decoded_content);
+  } else {
+    error("Error reading pods: ".$response->status_line);
     debug($response->decoded_content);
   }
   return('');
@@ -330,6 +399,156 @@ sub patchService
   return('');
 }
 
+sub writeServiceEvent
+{
+  my ($serviceSpec, $type, $reason, $message) = @_;
+  info("Writing $type event to service $serviceSpec");
+
+  my $header;
+  if ($apiConfig{token})
+  {
+    $header = ['Content-Type' => 'application/json', 'Accept' => 'application/json', 'Connection' => 'close', 'Authorization' => "Bearer $apiConfig{token}"];
+  } else {
+    $header = ['Content-Type' => 'application/json', 'Accept' => 'application/json', 'Connection' => 'close'];
+  }
+  my ($namespace, $service) = split('_', $serviceSpec);
+  my $serviceJson = readService($namespace, $service);
+  my $serviceHash;
+  eval {
+    $serviceHash = decode_json($serviceJson);
+  };
+  my $doRef = 1;
+  if (! $serviceHash->{metadata}->{name})
+  {
+    error("Service $serviceSpec does not exist");
+    $doRef = 0;
+  }
+  my $body;
+  $body->{kind} = 'Event';
+  $body->{apiVersion} = 'v1';
+  $body->{metadata}->{name} = "event-" . time;
+  $body->{metadata}->{namespace} = $namespace;
+  if ($doRef)
+  {
+    $body->{involvedObject}->{apiVersion} = $serviceHash->{apiVersion};
+    $body->{involvedObject}->{kind} = $serviceHash->{kind};
+    $body->{involvedObject}->{name} = $serviceHash->{metadata}->{name};
+    $body->{involvedObject}->{namespace} = $serviceHash->{metadata}->{namespace};
+    $body->{involvedObject}->{resourceVersion} = $serviceHash->{metadata}->{resourceVersion};
+    $body->{involvedObject}->{uid} = $serviceHash->{metadata}->{uid};
+  }
+  $body->{type} = $type;
+  $body->{reason} = $reason;
+  $body->{message} = $message;
+  $body->{lastTimestamp} = timeStamp();
+  my $json = encode_json($body);
+
+  my $url = "$apiConfig{apiURL}/namespaces/$namespace/events";
+
+  my $request = HTTP::Request->new('POST', "$url", $header, $json);
+  my $ua = apiConnect();
+  my $response = $ua->request($request);
+  if ($response->is_success)
+  {
+    return( $response->decoded_content );
+  } else {
+    if ($response->code eq '404')
+    {
+      my $request = HTTP::Request->new('POST', "$url", $header, $json);
+      my $ua = apiConnect();
+      my $response = $ua->request($request);
+      if ($response->is_success)
+      {
+        return( $response->decoded_content );
+      } else {
+        error("Error writing config: ".$response->status_line);
+        debug($request->as_string);
+        debug($response->decoded_content);
+      }
+    } else {
+      error("Error writing config: ".$response->status_line);
+      debug($request->as_string);
+      debug($response->decoded_content);
+    }
+  }
+  return('');
+}
+
+sub writePodEvent
+{
+  my ($podSpec, $type, $reason, $message) = @_;
+  info("Writing $type event to pod $podSpec");
+
+  my $header;
+  if ($apiConfig{token})
+  {
+    $header = ['Content-Type' => 'application/json', 'Accept' => 'application/json', 'Connection' => 'close', 'Authorization' => "Bearer $apiConfig{token}"];
+  } else {
+    $header = ['Content-Type' => 'application/json', 'Accept' => 'application/json', 'Connection' => 'close'];
+  }
+  my ($namespace, $pod) = split('_', $podSpec);
+  my $podJson = readPod($namespace, $pod);
+  my $podHash;
+  eval {
+    $podHash = decode_json($podJson);
+  };
+  my $doRef = 1;
+  if (! $podHash->{metadata}->{name})
+  {
+    error("Pod $podSpec does not exist");
+    $doRef = 0;
+  }
+  my $body;
+  $body->{kind} = 'Event';
+  $body->{apiVersion} = 'v1';
+  $body->{metadata}->{name} = "event-" . time;
+  $body->{metadata}->{namespace} = $namespace;
+  if ($doRef)
+  {
+    $body->{involvedObject}->{apiVersion} = $podHash->{apiVersion};
+    $body->{involvedObject}->{kind} = $podHash->{kind};
+    $body->{involvedObject}->{name} = $podHash->{metadata}->{name};
+    $body->{involvedObject}->{namespace} = $podHash->{metadata}->{namespace};
+    $body->{involvedObject}->{resourceVersion} = $podHash->{metadata}->{resourceVersion};
+    $body->{involvedObject}->{uid} = $podHash->{metadata}->{uid};
+  }
+  $body->{type} = $type;
+  $body->{reason} = $reason;
+  $body->{message} = $message;
+  $body->{lastTimestamp} = timeStamp();
+  my $json = encode_json($body);
+
+  my $url = "$apiConfig{apiURL}/namespaces/$namespace/events";
+
+  my $request = HTTP::Request->new('POST', "$url", $header, $json);
+  my $ua = apiConnect();
+  my $response = $ua->request($request);
+  if ($response->is_success)
+  {
+    return( $response->decoded_content );
+  } else {
+    if ($response->code eq '404')
+    {
+      my $request = HTTP::Request->new('POST', "$url", $header, $json);
+      my $ua = apiConnect();
+      my $response = $ua->request($request);
+      if ($response->is_success)
+      {
+        return( $response->decoded_content );
+      } else {
+        error("Error writing config: ".$response->status_line);
+        debug($request->as_string);
+        debug($response->decoded_content);
+      }
+    } else {
+      error("Error writing config: ".$response->status_line);
+      debug($request->as_string);
+      debug($response->decoded_content);
+    }
+  }
+  return('');
+}
+
 # Patches Endpoints
 sub serviceEndpoint
 {
@@ -377,6 +596,53 @@ sub serviceEndpoint
   return('');
 }
 
+# Tries to determine my pod's spec automatically
+sub getMyself
+{
+  # Cache for speed, TODO need to expire this cache
+  return($myself) if defined($myself); 
+
+  # Easiest way would be to pass pod name from kubernetes to environment
+  if ($ENV{MYSELF})
+  {
+    $myself = "$apiConfig{nameSpace}\_$ENV{MYSELF}";
+    $connected = 1;
+    return($myself);
+  }   
+  my $hostname = $ENV{HOSTNAME};
+  my $pods = readPods($apiConfig{nameSpace});
+  my $podsHash;
+  eval {
+    $podsHash = decode_json($pods);
+  };
+  foreach my $i ( @{$podsHash->{items}} )
+  {
+    # Watcher hostname should match pod name
+    if ( $ENV{HOSTNAME} eq $i->{metadata}->{name} )
+    {
+      $myself = "$apiConfig{nameSpace}\_$i->{metadata}->{name}";
+      $connected = 1;
+      return($myself);
+    }
+    # Actor hostname should match node name
+    if ( (substr($i->{metadata}->{name},0,5) eq 'actor') && ($ENV{HOSTNAME} eq $i->{spec}->{nodeName}) )
+    {
+      $myself = "$apiConfig{nameSpace}\_$i->{metadata}->{name}";
+      $connected = 1;
+      return($myself);
+    } 
+  }
+  # Failed
+  $myself = '';
+  warning("Failed to determined pod spec, local logging only");
+  return($myself);
+}
+
+sub isConnected
+{
+  return($connected);
+}
+
 sub apiConnect
 {
   my $ua;
@@ -394,7 +660,13 @@ sub apiConnect
   return($ua);
 }
 
+sub timeStamp
+{
+  my $dt = DateTime->now();
+  return($dt->ymd.'T'.$dt->hms.'Z');
+}
 
+getMyself();
 1;
 __END__
 
