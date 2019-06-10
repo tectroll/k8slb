@@ -17,6 +17,7 @@ my %watcherConfig = (
   certPath =>		$ENV{CERT_PATH} || '/etc/certs',
   forceUpdate =>	$ENV{FORCE_UPDATE} || 0,
   wipeDB =>		$ENV{WIPE_DB} || 0,
+  vridOffset =>         $ENV{VRID_OFFSET} || 0,
 );
 
 logLevel($watcherConfig{logLevel});
@@ -110,6 +111,7 @@ vrrp_sync_group LB$lb \{
     foreach my $pool ( keys(%{$globalsHash->{pools}}) )
     { # LB pool instance loop
       $rid++;
+      my $vrid = int("$lb$rid") + $watcherConfig{vridOffset};
       my $p = $globalsHash->{pools}->{"$pool"};
       my $interface = $p->{interface} || "\{\{ INT".uc($pool)." \}\}";
       $output .= "
@@ -117,7 +119,7 @@ vrrp_instance LB$lb\_$pool {
   state BACKUP
   priority \{\{ PRIORITY$lb \}\}
   interface $interface
-  virtual_router_id $lb$rid
+  virtual_router_id $vrid
   authentication \{
     auth_type PASS
     auth_pass woftam

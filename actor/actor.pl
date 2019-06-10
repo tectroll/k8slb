@@ -7,9 +7,9 @@ use strict;
 use Data::Dumper;
 
 use lib 'lib';
-use k8slb_log;
 use k8slb_api;
 use k8slb_db;
+use k8slb_log;
 
 my %actorConfig = (
   logLevel		=> $ENV{LOG_LEVEL} || INFO,
@@ -71,6 +71,7 @@ while (1)
   } elsif ($actorConfig{proxy} eq 'haproxy') {
     hpUpdate();
   }
+  iptablesUpdate();
   sleep($actorConfig{loopDelay});
 }
 
@@ -260,7 +261,7 @@ sub hpUpdate
           hpRestore($hpNew);
         }
       }
-      iptablesUpdate();
+      #iptablesUpdate();
     } else {
       error("Can't write to HAProxy config $actorConfig{hpCurrent} $@");
     }
@@ -376,7 +377,7 @@ sub nxUpdate
           nxRestore($nxNew);
         }
       }
-      iptablesUpdate();
+      #iptablesUpdate();
     } else {
       error("Can't write to nginx config $actorConfig{nxCurrent} $@");
     }
@@ -508,6 +509,7 @@ sub ip6tablesReconcile
     my $found = 0;
     foreach my $cRule ( @current )
     {
+debug("substr($cRule, 3) \n    $nRule");
       if (substr($cRule, 3) eq $nRule)
       {
         $found = 1;

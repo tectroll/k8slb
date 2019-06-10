@@ -14,7 +14,7 @@ You can change the watcher's behavior by setting the following environment varia
 e causing watcher or actor to fail to launch.
 * PROXY: (Default: haproxy) Sets which proxy backend to use.  You will need to change this in the actor manifest as well, and make sure the gl
 obal configuration supports the backend.
-
+* VRID_OFFSET: (Default: 0) This is added to the virtual router id, this lets you help avoid conflicts with other VRRP instances on the same network
 
 ### Actor
 

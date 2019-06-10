@@ -201,8 +201,8 @@ rules:
   resources: ["nodes", "pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["services/status"]
-  verbs: ["update", "patch"]
+  resources: ["services/status", "events"]
+  verbs: ["update", "patch", "create"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -294,7 +294,7 @@ spec:
         component: watcher
     spec:
       containers:
-      - image: tectroll/k8slb-watcher:v0.4
+      - image: tectroll/k8slb-watcher:v0.5
         name: watcher
         env:
         - name: K8SLB_NODE_NAME
@@ -343,7 +343,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: tectroll/k8slb-actor:v0.4
+      - image: tectroll/k8slb-actor:v0.5
         imagePullPolicy: Always
         name: watcher
         env:
