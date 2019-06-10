@@ -339,28 +339,34 @@ sub servicesFromJSON
         $found = 1;
         my $serv = serviceConvert($s);
 
+        if ( ! genericCompare($db->{services}->{$service}->{sources}, $serv->{sources}) )
+        {
+          $db->{services}->{$service}->{sources} = $serv->{sources};
+          info("Service $service sources changed", $service);
+          $changed = 1 if ipAssign($db, $service);
+        }
         if ( ! genericCompare($db->{services}->{$service}->{options}, $serv->{options}) )
         {
           $db->{services}->{$service}->{options} = $serv->{options};
-          info("Service $service options changed");
+          info("Service $service options changed", $service);
           $changed = 1;
         }
         if ($db->{services}->{$service}->{selector} ne $serv->{selector})
         {
-          info("Service $service selector changed");
+          info("Service $service selector changed", $service);
           $db->{services}->{$service}->{selector} = $serv->{selector};
           $changed = 1;
         }
         if ($db->{services}->{$service}->{pool} ne $serv->{pool})
         {
-          info("Service $service pool changed");
+          info("Service $service pool changed", $service);
           $changed = 1 if ipUnassign($db, $service);
           $db->{services}->{$service}->{pool} = $serv->{pool};
           $changed = 1 if ipAssign($db, $service);
         }
         if ($db->{services}->{$service}->{requestIP} ne $serv->{requestIP})
         {
-          info("Service $service requested IP changed");
+          info("Service $service requested IP changed", $service);
           $changed = 1 if ipUnassign($db, $service);
           $db->{services}->{$service}->{requestIP} = $serv->{requestIP};
           $changed = 1 if ipAssign($db, $service);
@@ -373,7 +379,7 @@ sub servicesFromJSON
         if ( ! genericCompare($db->{services}->{$service}->{ports}, $serv->{ports}) )
         {
           $db->{services}->{$service}->{ports} = $serv->{ports};
-          info("Service $service ports changed");
+          info("Service $service ports changed", $service);
           $changed = 1 if ipAssign($db, $service);
         }
         if ( ! ipByService($db, $service) )
@@ -503,6 +509,7 @@ sub serviceConvert
 {
   my ($service) = @_;
   my %hash;
+  $hash{sources} = $service->{spec}->{loadBalancerSourceRanges};
   $hash{nameSpace} = $service->{metadata}->{namespace};
   $hash{name} = $service->{metadata}->{name};
   if ($service->{metadata}->{annotations}->{"loadbalancer/pool"})
@@ -707,7 +714,7 @@ sub ipAssign
       my $ip = ipByService($db, $service);
       if ($ip)
       {
-        info("Service $service already has an IP, updating ports");
+        info("Service $service already has an IP, updating ports", $service);
 
         my $count = 0;
         foreach my $p ( @{$db->{ips}->{$ip}->{ports}} )
@@ -724,7 +731,7 @@ sub ipAssign
       if (! $ip)
       {
         $ip = nextIP($db, $serviceHash->{pool});
-        info("Assigning dynamic IP $ip to service $service");
+        info("Assigning dynamic IP $ip to service $service", $service);
       }
       if ($ip)
       {
@@ -739,13 +746,14 @@ sub ipAssign
               {
                 if ($port->{protocol} eq $p->{protocol} && $port->{port} eq $p->{port})
                 {
-                  error("Can't assign $ip/$port to $service, already assigned to $p->{service}");
+                  error("Can't assign $ip/$port to $service, already assigned to $p->{service}", $service);
                   return(0);
                 }
               }
               my $newPort = { %$port };
               $newPort->{port} = "$newPort->{port}";
               $newPort->{service} = $service;
+              $newPort->{sources} = $serviceHash->{sources};
               push(@{$db->{ips}->{$ip}->{ports}}, $newPort);
             }
           } else {
@@ -757,6 +765,7 @@ sub ipAssign
               my $newPort = { %$port };
               $newPort->{port} = "$newPort->{port}";
               $newPort->{service} = $service;
+              $newPort->{sources} = $serviceHash->{sources};
               push(@ports, $newPort);
             }
             $hash{ports} = \@ports;
@@ -789,7 +798,7 @@ sub ipAssign
 sub ipUnassign
 {
   my ($db, $service, $nopatch) = @_;
-  info("Unassign IP from service $service");
+  info("Unassign IP from service $service", $service);
   my $ip = ipByService($db, $service);
   if ($ip)
   {
@@ -814,15 +823,28 @@ sub iptablesRules
   foreach my $ip ( keys(%{$db->{ips}}) )
   {
     next if (ipVersion($ip) != 4);
+    $ip = ip_compress_address($ip, 4); 
     foreach my $port ( @{$db->{ips}->{$ip}->{ports}} )
     {
-#TODO add support for restricting source address
-      if ( lc($port->{protocol}) eq 'udp' )
+      if ( defined($port->{sources}) )
       {
-        push(@rules, "INPUT -d $ip/32 -p udp -m udp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        foreach my $s (@{$port->{sources}})
+        {
+          if ( lc($port->{protocol}) eq 'udp' )
+          {
+            push(@rules, "INPUT -s $s -d $ip/32 -p udp -m udp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+          } else {
+            push(@rules, "INPUT -s $s -d $ip/32 -p tcp -m tcp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+          }
+        }
       } else {
-        push(@rules, "INPUT -d $ip/32 -p tcp -m tcp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
-      }  
+        if ( lc($port->{protocol}) eq 'udp' )
+        {
+          push(@rules, "INPUT -d $ip/32 -p udp -m udp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        } else {
+          push(@rules, "INPUT -d $ip/32 -p tcp -m tcp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        }  
+      }
     }
   }
   return(\@rules);
@@ -835,15 +857,28 @@ sub ip6tablesRules
   my @rules;
   foreach my $ip ( keys(%{$db->{ips}}) )
   {
+    $ip = ip_compress_address($ip, 6);
     next if (ipVersion($ip) != 6);
     foreach my $port ( @{$db->{ips}->{$ip}->{ports}} )
     {
-#TODO add support for restricting source address
-      if ( lc($port->{protocol}) eq 'udp' )
+      if ( defined($port->{sources}) )
       {
-        push(@rules, "INPUT -d $ip/128 -p udp -m udp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        foreach my $s (@{$port->{sources}})
+        {
+          if ( lc($port->{protocol}) eq 'udp' )
+          {
+            push(@rules, "INPUT -s $s -d $ip/128 -p udp -m udp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+          } else {
+            push(@rules, "INPUT -s $s -d $ip/128 -p tcp -m tcp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+          }
+        }
       } else {
-        push(@rules, "INPUT -d $ip/128 -p tcp -m tcp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        if ( lc($port->{protocol}) eq 'udp' )
+        {
+          push(@rules, "INPUT -d $ip/128 -p udp -m udp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        } else {
+          push(@rules, "INPUT -d $ip/128 -p tcp -m tcp --dport $port->{port} -m comment --comment k8slb-system -j ACCEPT");
+        }
       }
     }
   }

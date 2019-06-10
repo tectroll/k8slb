@@ -34,7 +34,7 @@ use constant {
 
 %logConfig = (
   logLevel => INFO,
-  backoffTime => 5,  # number of seconds to backoff from error logging
+  backoffTime => 60,  # number of seconds to backoff from error logging
   backoffMaxTime => 3600,
 );
 

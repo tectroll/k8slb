@@ -34,8 +34,8 @@ rules:
   resources: ["nodes", "pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["services/status"]
-  verbs: ["update", "patch"]
+  resources: ["services/status", "events"]
+  verbs: ["update", "patch", "create"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

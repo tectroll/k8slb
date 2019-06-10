@@ -340,6 +340,7 @@ sub patchService
 {
   my ($nameSpace, $service, $ip) = @_;
   info("Patching service $nameSpace/$service with IP $ip");
+  info("Patching service with IP $ip", "$nameSpace\_$service");
   my $hostname;
   my $field;
   if (proxyType() eq 'kubeproxy')
@@ -402,7 +403,6 @@ sub patchService
 sub writeServiceEvent
 {
   my ($serviceSpec, $type, $reason, $message) = @_;
-  info("Writing $type event to service $serviceSpec");
 
   my $header;
   if ($apiConfig{token})
@@ -461,12 +461,12 @@ sub writeServiceEvent
       {
         return( $response->decoded_content );
       } else {
-        error("Error writing config: ".$response->status_line);
+        error("Error writing event: ".$response->status_line);
         debug($request->as_string);
         debug($response->decoded_content);
       }
     } else {
-      error("Error writing config: ".$response->status_line);
+      error("Error writing event: ".$response->status_line);
       debug($request->as_string);
       debug($response->decoded_content);
     }
@@ -477,7 +477,6 @@ sub writeServiceEvent
 sub writePodEvent
 {
   my ($podSpec, $type, $reason, $message) = @_;
-  info("Writing $type event to pod $podSpec");
 
   my $header;
   if ($apiConfig{token})
@@ -501,7 +500,7 @@ sub writePodEvent
   my $body;
   $body->{kind} = 'Event';
   $body->{apiVersion} = 'v1';
-  $body->{metadata}->{name} = "event-" . time;
+  $body->{metadata}->{name} = "event-" . time . '-' . int(rand(10000));
   $body->{metadata}->{namespace} = $namespace;
   if ($doRef)
   {
@@ -536,12 +535,12 @@ sub writePodEvent
       {
         return( $response->decoded_content );
       } else {
-        error("Error writing config: ".$response->status_line);
+        error("Error writing event: ".$response->status_line);
         debug($request->as_string);
         debug($response->decoded_content);
       }
     } else {
-      error("Error writing config: ".$response->status_line);
+      error("Error writing event: ".$response->status_line);
       debug($request->as_string);
       debug($response->decoded_content);
     }
@@ -666,7 +665,10 @@ sub timeStamp
   return($dt->ymd.'T'.$dt->hms.'Z');
 }
 
-getMyself();
+if (my $self = getMyself())
+{
+  info("My pod is $self");
+}
 1;
 __END__
 
