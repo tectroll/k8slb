@@ -111,7 +111,7 @@ vrrp_sync_group LB$lb \{
     foreach my $pool ( keys(%{$globalsHash->{pools}}) )
     { # LB pool instance loop
       $rid++;
-      my $vrid = int("$lb$rid") + $watcherConfig{vridOffset};
+      my $vrid = int(int("$lb$rid") + $watcherConfig{vridOffset});
       my $p = $globalsHash->{pools}->{"$pool"};
       my $interface = $p->{interface} || "\{\{ INT".uc($pool)." \}\}";
       $output .= "
