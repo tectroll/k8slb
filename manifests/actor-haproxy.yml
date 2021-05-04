@@ -3,7 +3,7 @@
 # It watches for changes in the database, configures
 # the IPs, and listens for external connections.
 ####
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
