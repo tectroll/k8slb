@@ -523,7 +523,7 @@ sub serviceConvert
   {
     if ( lc(substr($anno,0,12)) eq 'loadbalancer')
     {
-      my ($lb,$option) = split('/', $anno);
+      my $option = substr($anno,13);
       $option = lc($option);
       $hash{options}->{$option} = $service->{metadata}->{annotations}->{$anno};
     }

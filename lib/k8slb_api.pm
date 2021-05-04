@@ -354,10 +354,10 @@ sub patchService
     {
       if (ipVersion($ip) == 6)
       {
-        $ip =~ s/:/\./g;
-        $hostname = "$ip.ip6.name";
+        $ip =~ s/:/\-/g;
+        $hostname = "$ip.sslip.io";
       } else {
-        $hostname = "$ip.xip.io";
+        $hostname = "$ip.sslip.io";
       }
     }
   }

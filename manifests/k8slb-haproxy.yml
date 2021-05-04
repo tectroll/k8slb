@@ -169,7 +169,7 @@ roleRef:
 # runs.  It watches kubernetes for changes in configuration and
 # updates the database needed by the actor.
 ####
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -190,7 +190,7 @@ spec:
         component: watcher
     spec:
       containers:
-      - image: tectroll/k8slb-watcher:v0.5
+      - image: tectroll/k8slb-watcher:v0.6
         name: watcher
         env:
         - name: K8SLB_NODE_NAME
@@ -216,7 +216,7 @@ spec:
 # It watches for changes in the database, configures
 # the IPs, and listens for external connections.
 ####
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
@@ -237,7 +237,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: tectroll/k8slb-actor:v0.5
+      - image: tectroll/k8slb-actor:v0.6
         name: actor
         env:
         - name: K8SLB_NODE_NAME

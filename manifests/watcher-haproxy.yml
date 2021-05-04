@@ -3,7 +3,7 @@
 # runs.  It watches kubernetes for changes in configuration and
 # updates the database needed by the actor.
 ####
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:

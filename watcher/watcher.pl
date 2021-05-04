@@ -11,13 +11,13 @@ use k8slb_db;
 use k8slb_log;
 
 my %watcherConfig = (
-  logLevel => 		$ENV{LOG_LEVEL} || INFO,
-  nodeSelector => 	$ENV{NODE_SELECTOR} || 'type=loadBalancer',
-  delay => 		$ENV{LOOP_DELAY} || 10,
-  certPath =>		$ENV{CERT_PATH} || '/etc/certs',
-  forceUpdate =>	$ENV{FORCE_UPDATE} || 0,
-  wipeDB =>		$ENV{WIPE_DB} || 0,
-  vridOffset =>         $ENV{VRID_OFFSET} || 0,
+  logLevel => 		$ENV{LOG_LEVEL} // INFO,
+  nodeSelector => 	$ENV{NODE_SELECTOR} // 'type=loadBalancer',
+  delay => 		$ENV{LOOP_DELAY} // 10,
+  certPath =>		$ENV{CERT_PATH} // '/etc/certs',
+  forceUpdate =>	$ENV{FORCE_UPDATE} // 0,
+  wipeDB =>		$ENV{WIPE_DB} // 0,
+  vridOffset =>         $ENV{VRID_OFFSET} // 0,
 );
 
 logLevel($watcherConfig{logLevel});
