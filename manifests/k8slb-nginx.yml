@@ -294,7 +294,7 @@ spec:
         component: watcher
     spec:
       containers:
-      - image: tectroll/k8slb-watcher:v0.6
+      - image: tectroll/k8slb-watcher:v0.7
         name: watcher
         env:
         - name: K8SLB_NODE_NAME
@@ -343,7 +343,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: tectroll/k8slb-actor:v0.6
+      - image: tectroll/k8slb-actor:v0.7
         imagePullPolicy: Always
         name: watcher
         env:
