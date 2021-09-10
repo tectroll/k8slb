@@ -10,9 +10,11 @@ use k8slb_api;
 use k8slb_db;
 use k8slb_log;
 
+my $prefix = $ENV{PREFIX} // '';
+
 my %watcherConfig = (
   logLevel => 		$ENV{LOG_LEVEL} // INFO,
-  nodeSelector => 	$ENV{NODE_SELECTOR} // 'type=loadBalancer',
+  nodeSelector => 	$ENV{NODE_SELECTOR} // "type=$prefix" . "loadBalancer",
   delay => 		$ENV{LOOP_DELAY} // 10,
   certPath =>		$ENV{CERT_PATH} // '/etc/certs',
   forceUpdate =>	$ENV{FORCE_UPDATE} // 0,

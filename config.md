@@ -15,6 +15,7 @@ e causing watcher or actor to fail to launch.
 * PROXY: (Default: haproxy) Sets which proxy backend to use.  You will need to change this in the actor manifest as well, and make sure the gl
 obal configuration supports the backend.
 * VRID_OFFSET: (Default: 0) This is added to the virtual router id, this lets you help avoid conflicts with other VRRP instances on the same network
+* PREFIX: (Default: '') This prefix is added to configmaps to help with running multiple copies of k8slb
 
 ### Actor
 
@@ -36,6 +37,7 @@ RP virtual router id.
 * LOOP_DELAY: (Default: 10) Number of seconds between polling for changes.
 * PROXY: (Default: haproxy)  Sets which proxy backend to use.  You will need to change this in the watcher manifest as well, and make sure the global configuration supports the backend.
 * PRIORITY#: (Default: ) Override keepalived priority for load balancer number #
+* PREFIX: (Default: '') This prefix is added to configmaps to help with running multiple copies of k8slb
 
 ### Service Annotations
 These annotations change the way the k8slb system handles services

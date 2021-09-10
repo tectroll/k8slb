@@ -41,6 +41,7 @@ use DateTime;
   'proto' 	=> '',
   'host'  	=> $ENV{KUBERNETES_SERVICE_HOST},
   'port'  	=> $ENV{KUBERNETES_SERVICE_PORT},
+  'prefix'      => $ENV{PREFIX} // '',
   'base'  	=> '/api/v1',
   'token'	=> '',
   'agent' 	=> 'k8slb-perl/0.10',
@@ -79,6 +80,7 @@ $apiConfig{configURL} = "$apiConfig{apiURL}/namespaces/$apiConfig{nameSpace}/con
 sub readConfig
 {
   my ($name) = @_;
+  $name = "$apiConfig{prefix}$name"; 
 
   my $ua = apiConnect();
   my $response;
@@ -112,6 +114,7 @@ sub readConfig
 sub readEpoch
 {
   my ($name) = @_;
+  $name = "$apiConfig{prefix}$name"; 
 
   my $ua = apiConnect();
   my $response;
@@ -146,6 +149,7 @@ sub readEpoch
 sub writeConfig
 {
   my ($name, $string) = @_;
+  $name = "$apiConfig{prefix}$name"; 
   info("Writing config $name");
 
   my $header;
