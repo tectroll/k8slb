@@ -39,6 +39,8 @@ spec:
           readOnly: true
         - name: dev
           mountPath: /dev
+        - name: libmodules
+          mountPath: /lib/modules
         stdin: true
         securityContext:
           privileged: true
@@ -49,6 +51,9 @@ spec:
       - name: dev
         hostPath:
           path: /dev
+      - name: libmodules
+        hostPath:
+          path: /lib/modules
       restartPolicy: Always
       serviceAccount: actor
       serviceAccountName: actor

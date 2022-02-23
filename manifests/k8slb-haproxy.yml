@@ -190,7 +190,7 @@ spec:
         component: watcher
     spec:
       containers:
-      - image: tectroll/k8slb-watcher:v0.7
+      - image: tectroll/k8slb-watcher:v0.8
         name: watcher
         env:
         - name: K8SLB_NODE_NAME
@@ -237,7 +237,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: tectroll/k8slb-actor:v0.7
+      - image: tectroll/k8slb-actor:v0.8
         name: actor
         env:
         - name: K8SLB_NODE_NAME
@@ -252,6 +252,8 @@ spec:
           readOnly: true
         - name: dev
           mountPath: /dev
+        - name: libmodules
+          mountPath: /lib/modules
         stdin: true
         securityContext:
           privileged: true
@@ -262,6 +264,9 @@ spec:
       - name: dev
         hostPath:
           path: /dev
+      - name: libmodules
+        hostPath:
+          path: /lib/modules
       restartPolicy: Always
       serviceAccount: actor
       serviceAccountName: actor
